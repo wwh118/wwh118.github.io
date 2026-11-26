@@ -1,0 +1,8 @@
+<svg width="341" height="122" viewBox="0 0 341 122" fill="none" xmlns="http://www.w3.org/2000/svg">
+<ellipse cx="170.129" cy="61" rx="170.129" ry="61" fill="white"/>
+<mask id="stroke0_268_799" fill="white">
+<path d="M340.257 61C340.257 94.6894 264.088 122 170.129 122C76.1691 122 0 94.6894 0 61C0 27.3106 76.1691 0 170.129 0C264.088 0 340.257 27.3106 340.257 61Z"/>
+</mask>
+<ellipse cx="170.129" cy="61" rx="170.129" ry="61" stroke-width="4" stroke="black" mask="url(#stroke0_268_799)"/>
+<ellipse cx="172.075" cy="58.6357" rx="118.35" ry="31.2093" fill="#E5E5E5"/>
+</svg>

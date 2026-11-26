@@ -1,0 +1,962 @@
+/* =========================================================
+   목차
+   00. 폰트 / 변수 / 공통
+   01. 씬 1-1  시작 화면
+   02. 씬 1-2 ~ 1-10  하루 일과 (sticky)
+   03. 씬 2  현대인의 단백질 섭취 현황 (sticky)
+   04. 씬 3  나의 필요 단백질량
+   05. 씬 4  냉장고 (드래그 앤 드롭)
+   06. 씬 5  평가 팝업
+   ========================================================= */
+
+
+/* =========================================================
+   00. 폰트 / 변수 / 공통
+   ========================================================= */
+@font-face {
+  font-family: "Moneygraphy";
+  src: url("../assets/fonts/moneygraphy-rounded.otf") format("opentype");
+  font-display: swap;
+}
+
+:root {
+  /* 배경색 */
+  --bg-s1: #FFE3C6;
+  --bg-main: #FFF8F0;
+  /* 박스색 */
+  --box-red: #FFDDDD;
+  --box-pink: #FFDDF3;
+  --box-orange: #FFEAD6;
+  --box-blue: #D2E6FF;
+  /* 표(그래프) 색 */
+  --chart-red: #FF9494;
+  --chart-yellow: #FFE394;
+  --chart-green: #C3F792;
+  /* 그 외 */
+  --goal-red: #E30005;
+  --line-purple: #BBAEFF;
+  --graph-red: #FF5B5D;        /* 꺾은선 그래프 : 빨강 */
+  --graph-purple: #9275FF;     /* 꺾은선 그래프 : 보라 */
+  --silhouette-off: #CDC6C0;
+
+  --font-title: "Moneygraphy", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  /* 말풍선(1-2 ~ 1-10) 안의 글자를 제외한 모든 글자는 머니그라피 */
+  --font-body: "Moneygraphy", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  /* 말풍선 안의 글자 */
+  --font-bubble: "Apple SD Gothic Neo", "Sandoll Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+
+  /* JS 가 화면 크기에 맞춰 갱신 (1920x1080 기준 배율) */
+  --scale: 1;
+  /* 스크롤 한 단계가 차지하는 길이 */
+  --step: 55vh;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: auto; }
+
+body {
+  margin: 0;
+  background: var(--bg-main);
+  color: #000;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+  overflow-x: hidden;
+}
+
+body.is-locked { overflow: hidden; }
+
+p, h1, h2, ul { margin: 0; padding: 0; }
+ul { list-style: none; }
+img { display: block; user-select: none; -webkit-user-drag: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+[hidden] { display: none !important; }
+
+/* 1920x1080 디자인 좌표계 (화면 크기에 맞춰 배율만 바뀜) */
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1920px;
+  height: 1080px;
+  margin: -540px 0 0 -960px;
+  transform: scale(var(--scale));
+  transform-origin: center center;
+}
+
+/* sticky 씬 공통 */
+.sticky-scene {
+  position: relative;
+  height: calc(100vh + var(--steps) * var(--step));
+}
+.sticky-frame {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 모든 버튼 : 클릭하면 살짝 작아졌다 커지는 효과 */
+.btn { -webkit-tap-highlight-color: transparent; }
+.btn.is-press { animation: btn-press .32s ease; }
+@keyframes btn-press {
+  0%   { scale: 1; }
+  40%  { scale: .9; }
+  100% { scale: 1; }
+}
+
+/* 처음으로 : 장면 4개 길이만큼만 올라가도록 스크롤 구간을 잠깐 접어 둠 */
+body.is-rewinding .sticky-scene { --step: 0px; }
+
+/* 아래로 스크롤 안내 (씬 2-5-2 / 씬 3-2 공통 : 같은 위치, 같은 글자 크기) */
+.scroll-hint {
+  position: absolute;
+  left: 0; right: 0; bottom: 8px;
+  width: max-content; margin: 0 auto;     /* transform 대신 margin 으로 중앙 정렬 (눌러도 중앙 유지) */
+  padding: 0; border: 0; background: none; cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #3a2a1d;
+  font: 400 24px/1 var(--font-title);
+  white-space: nowrap;
+}
+.scroll-hint__arrow {
+  position: relative;
+  width: 30px; height: 40px;
+  animation: hint-bounce 1.4s ease-in-out infinite;
+}
+.scroll-hint__arrow::before,
+.scroll-hint__arrow::after {             /* 위아래로 화살표 두 개 */
+  content: "";
+  position: absolute; left: 50%;
+  width: 16px; height: 16px;
+  margin-left: -8px;
+  border-right: 3px solid #FF9F1C;
+  border-bottom: 3px solid #FF9F1C;
+  transform: rotate(45deg);
+}
+.scroll-hint__arrow::before { top: 2px; }
+.scroll-hint__arrow::after  { top: 16px; }
+@keyframes hint-bounce {
+  0%, 100% { translate: 0 -3px; }
+  50%      { translate: 0 5px; }
+}
+
+
+/* =========================================================
+   01. 씬 1-1  시작 화면
+   ========================================================= */
+/* 씬 1 전체가 하나의 sticky 화면 : 1-1 은 맨 위 레이어로 있다가 스크롤하면 사라짐 */
+.intro {
+  position: absolute; inset: 0;
+  z-index: 4;
+  background: radial-gradient(ellipse 55% 60% at 50% 55%, #FFF2E4 0%, var(--bg-s1) 100%);
+  transition: opacity .8s ease, transform .9s cubic-bezier(.3,.7,.2,1);
+}
+.intro.is-out { opacity: 0; transform: translateY(-36px) scale(.985); pointer-events: none; }
+
+.intro-title {
+  position: absolute;
+  left: 0; top: 90px;
+  width: 100%;
+  text-align: center;
+  font: 400 150px/200px var(--font-title);
+  letter-spacing: -2px;
+  animation: title-float 4.2s ease-in-out infinite;     /* 위아래로 천천히 둥둥 */
+}
+@keyframes title-float {
+  0%, 100% { transform: translateY(-9px); }
+  50%      { transform: translateY(11px); }
+}
+
+.profile-card {
+  position: absolute;
+  left: 795px; top: 313px;
+  width: 330px; height: 232px;
+  padding: 22px 0 0 30px;
+  background: var(--box-blue);
+  border: 2px solid #000;
+  border-radius: 24px;
+  z-index: 2;
+}
+.profile-card__name { font: 400 30px/38px var(--font-title); }
+.profile-card__text {
+  margin-top: 6px;
+  font: 400 18px/29px var(--font-title);
+  letter-spacing: -.3px;
+}
+
+/* 음식 퍼레이드 : 고단백 씨 뒤로 왼쪽 → 오른쪽 */
+.food-parade { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; z-index: 1; pointer-events: none; }
+.food-parade__track { position: absolute; left: 0; top: 0; height: 1080px; will-change: transform; animation: food-parade var(--parade-dur, 200s) linear infinite; }
+.food-parade__item { position: absolute; top: 0; }
+.food-parade__item img { display: block; width: 100%; height: 100%; }
+@keyframes food-parade {
+  from { transform: translateX(0); }
+  to   { transform: translateX(var(--set-w)); }
+}
+.intro-character {
+  position: absolute;
+  left: 700px; top: 534px;
+  width: 512px; height: 566px;
+  z-index: 3;                    /* 설명 박스보다 앞 */
+}
+
+
+/* =========================================================
+   02. 씬 1-2 ~ 1-10  하루 일과 (sticky)
+   ========================================================= */
+.scene1-story { background: var(--bg-s1); }
+
+/* 1-10 : 아래쪽이 다음 씬 배경색으로 서서히 바뀜 */
+.stage--behind {
+  position: absolute; inset: 0;
+  width: auto; height: auto; margin: 0;
+  transform: none;
+  pointer-events: none;
+}
+.story-fade {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(255,248,240,0) 62%, var(--bg-main) 100%);
+  opacity: 0;
+  transition: opacity .8s;
+}
+.sticky-frame[data-step="9"]  .story-fade,
+.sticky-frame[data-step="10"] .story-fade,
+.sticky-frame[data-step="11"] .story-fade,
+.sticky-frame[data-step="12"] .story-fade { opacity: 1; }
+
+/* 상단 시간 헤더 */
+.time-header {
+  position: absolute; left: 0; top: 0;
+  width: 100%;
+  height: calc(122px * var(--scale));
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s;
+}
+.time-header.is-visible { opacity: 1; pointer-events: auto; }
+.time-header__bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, var(--bg-main) 0%, var(--bg-s1) 100%);
+}
+.time-header__nav {
+  position: absolute;
+  left: 50%; top: 0;
+  width: 1920px; height: 122px;
+  margin-left: -960px;
+  transform: scale(var(--scale));
+  transform-origin: top center;
+}
+.time-btn {
+  position: absolute;
+  top: 14px;
+  width: 190px; height: 52px;
+  font: 400 19px/52px var(--font-body);
+  color: #A89A8E;
+  letter-spacing: -.3px;
+  transition: color .3s, font-size .3s;
+}
+.time-btn:nth-child(1) { left: 123px; }
+.time-btn:nth-child(2) { left: 342px; }
+.time-btn:nth-child(3) { left: 561px; }
+.time-btn:nth-child(4) { left: 780px; }
+.time-btn:nth-child(5) { left: 999px; }
+.time-btn:nth-child(6) { left: 1218px; }
+.time-btn:nth-child(7) { left: 1437px; }
+.time-btn:nth-child(8) { left: 1656px; }
+.time-btn.is-current { color: #000; font-size: 28px; }
+
+/* 장면 */
+.story-stage { z-index: 2; }
+.story {
+  position: absolute; inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .55s ease;
+}
+.story.is-active { opacity: 1; }
+.story__illust {
+  position: absolute;
+  transform: translateY(26px);
+  transition: transform .7s cubic-bezier(.2,.8,.3,1);
+}
+.story.is-active .story__illust { transform: none; }
+
+/* 말풍선 : 묶음 안의 상자들이 하나의 도형처럼 보이도록 테두리를 뒤에 깔아 둠 */
+.bubble-layer { position: absolute; inset: 0; z-index: 2; isolation: isolate; }
+.bubble-group {
+  position: absolute;
+  isolation: isolate;
+  scale: 1.12;                    /* 말풍선(글자 포함)을 조금 키움 */
+  opacity: 0;
+  transform: translateY(16px) scale(.96);
+  transition: opacity .45s ease, transform .5s cubic-bezier(.2,.9,.3,1.2);
+}
+.story.is-active .bubble-group { opacity: 1; transform: none; }
+.story.is-active .bubble-group:nth-child(1) { transition-delay: .25s; }
+.story.is-active .bubble-group:nth-child(2) { transition-delay: .6s; }
+.story.is-active .bubble-group:nth-child(3) { transition-delay: .95s; }
+
+.bubble {
+  position: absolute;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff;
+  text-align: center;
+  color: #000;
+}
+.bubble::before {               /* 검정 테두리 (두 상자가 겹쳐도 안쪽 선이 안 보임) */
+  content: "";
+  position: absolute; inset: -2px;
+  background: #000;
+  z-index: -1;
+}
+.bubble p { font: 500 17px/22px var(--font-bubble); letter-spacing: -.2px; }
+.bubble--big p { font: 700 24px/35px var(--font-bubble); letter-spacing: -.4px; }
+
+/* 1-10 : 말풍선은 스크롤할 때마다 하나씩 */
+.story--last { transition: opacity .55s ease; }
+.story.story--last .bubble-group.last-bubble,
+.story.story--last.is-active .bubble-group.last-bubble { opacity: 0; transform: translateY(20px); transition-delay: 0s; }
+.story.story--last .bubble-group.last-bubble.is-on,
+.story.story--last.is-active .bubble-group.last-bubble.is-on { opacity: 1; transform: none; }
+
+/* 1-10 : 계란이 화면 아래에서 올라옴 */
+.egg-rise { position: absolute; inset: 0; }
+.rise-egg {
+  position: absolute; left: 0; top: 0;
+  width: 30px; height: 41px;
+  opacity: 0;
+  transform: translate(var(--x), calc(var(--y) + 320px));
+  transition: transform 1.1s cubic-bezier(.2,.8,.25,1) var(--d), opacity .6s ease var(--d);
+}
+.rise-egg img { width: 100%; height: 100%; }
+.egg-rise.is-on .rise-egg { opacity: 1; transform: translate(var(--x), var(--y)); }   /* 회전 없음 */
+
+
+/* =========================================================
+   03. 씬 2  현대인의 단백질 섭취 현황 (sticky)
+   ========================================================= */
+.scene2 { background: var(--bg-main); }
+.scene2 .stage { z-index: 9; }
+
+/* ---- 계란 ---- */
+.egg-layer { position: absolute; inset: 0; z-index: 2; }
+.egg {
+  position: absolute; left: 0; top: 0;
+  width: 30px; height: 41px;
+  transform: translate(var(--x), var(--y)) rotate(var(--r));
+  opacity: var(--o, 1);
+  transition: transform var(--dur, 1.2s) cubic-bezier(.3,.75,.25,1) var(--d, 0s),
+              opacity .6s ease var(--od, 0s);
+  will-change: transform;
+}
+.egg img { width: 100%; height: 100%; animation: egg-float var(--fd, 4s) ease-in-out var(--fo, 0s) infinite alternate; }
+.egg.is-piled img { animation: none; }
+@keyframes egg-float {
+  from { transform: translateY(-7px); }
+  to   { transform: translateY(7px); }
+}
+
+/* ---- 상단 라벨 ---- */
+.topic-label {
+  position: absolute;
+  left: 772px; top: 92px;
+  width: 376px; height: 115px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid #000;
+  border-radius: 17px;
+  text-align: center;
+  font: 400 21px/30px var(--font-title);
+  z-index: 6;
+  opacity: 0;
+  transition: opacity .5s ease, filter .6s;      /* 제목 박스는 움직이지 않고 제자리에서 바뀜 */
+  pointer-events: none;
+}
+.topic-label--red    { background: var(--box-red); }
+.topic-label--orange { background: var(--box-orange); }
+.topic-label--blue   { background: var(--box-blue); }
+.topic-label--pink   { background: var(--box-pink); }
+
+[data-stage="1"] [data-label="egg"],
+[data-stage="2"] [data-label="egg"],
+[data-stage="3"] [data-label="gender"],
+[data-stage="4"] [data-label="gender"],
+[data-stage="5"] [data-label="gender"],
+[data-stage="6"] [data-label="meal"],
+[data-stage="7"] [data-label="meal"],
+[data-stage="8"] [data-label="meal"],
+[data-stage="9"] [data-label="age"],
+[data-stage="10"] [data-label="age"],
+[data-stage="11"] [data-label="age"],
+[data-stage="12"] [data-label="age"] { opacity: 1; }
+[data-stage="11"] [data-label="age"],
+[data-stage="12"] [data-label="age"] { filter: blur(14px); }
+
+/* ---- 저울 ---- */
+.scale {
+  position: absolute;
+  left: 761px; top: 706px;
+  width: 399px; height: 142px;
+  z-index: 1;
+  opacity: 0;
+  transform: translateY(70px);
+  transition: opacity .6s ease, transform .8s cubic-bezier(.2,.8,.3,1);
+}
+.scale__body { width: 100%; height: 100%; }
+.scale__display {
+  position: absolute; left: 87px; top: 64px;
+  width: 221px; height: 50px;
+  display: flex; align-items: center; justify-content: center;
+  font: 400 42px/1 var(--font-title);
+  letter-spacing: -.5px;
+}
+.scale__display.is-blink { animation: scale-blink 1.1s ease; }     /* 숫자가 다 올라가면 두 번 깜빡 */
+@keyframes scale-blink {
+  0%, 100% { opacity: 1; }
+  15%, 45% { opacity: .1; }
+  30%, 60% { opacity: 1; }
+}
+[data-stage="1"] .scale,
+[data-stage="2"] .scale { opacity: 1; transform: none; }
+[data-stage="3"] .scale { opacity: 0; transform: translateY(40px); }
+
+/* ---- 접시 ---- */
+.plate {
+  position: absolute;
+  left: 741px; top: 640px;
+  width: 437px; height: 103px;
+  z-index: 1;
+  opacity: 0;
+  transition: left .9s cubic-bezier(.3,.7,.2,1), top .9s cubic-bezier(.3,.7,.2,1), opacity .6s ease;
+}
+.plate--male { z-index: 1; }
+/* 2-1-2 : 저울 위 빈 접시 */
+[data-stage="1"] .plate--male, [data-stage="2"] .plate--male { opacity: 1; }
+/* 2-2-1 : 저울이 사라지고 접시만 남음 */
+[data-stage="3"] .plate--male { opacity: 1; top: 738px; }
+/* 2-2-2 : 남성 / 여성 접시로 분리 */
+[data-stage="4"] .plate--male   { opacity: 1; top: 738px; left: 485px; }
+[data-stage="4"] .plate--female { opacity: 1; top: 738px; left: 1016px; }
+/* 2-2-3 : 접시가 위로 올라감 */
+[data-stage="5"] .plate--male   { opacity: 1; top: 473px; left: 485px; }
+[data-stage="5"] .plate--female { opacity: 1; top: 473px; left: 1016px; }
+
+.plate-name {
+  position: absolute; top: 850px;
+  width: 120px; margin-left: -60px;
+  text-align: center;
+  font: 400 26px/1 var(--font-title);
+  opacity: 0;
+  transition: opacity .5s ease .4s;
+}
+.plate-name--male   { left: 705px; }
+.plate-name--female { left: 1245px; }
+[data-stage="4"] .plate-name { opacity: 1; }
+
+/* ---- 남성 / 여성 실루엣 ---- */
+.person {
+  position: absolute;
+  left: 0; top: 0;
+  width: 86px; height: 249px;
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: center bottom;
+  transition: opacity .6s ease .15s, transform .8s cubic-bezier(.3,.7,.2,1), width .8s, height .8s;
+}
+.person__shape {
+  display: block; width: 100%; height: 100%;
+  background: var(--shape) center bottom / contain no-repeat;
+  transform-origin: center bottom;
+  transition: scale .4s cubic-bezier(.3,.7,.2,1);
+}
+/* 클릭하면 제자리에서 살짝 작아졌다가 돌아옴 (위치는 그대로) */
+.person.btn.is-press { animation: none; }
+.person.is-press .person__shape { animation: person-press .34s ease; }
+@keyframes person-press {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(.88); }
+  100% { transform: scale(1); }
+}
+.person--male   { --shape: url("../assets/img/scene2/man.svg");   --shape-off: url("../assets/img/scene2/man-gray.svg"); }
+.person--female { --shape: url("../assets/img/scene2/woman.svg"); --shape-off: url("../assets/img/scene2/woman-gray.svg"); }
+
+/* 위치 : 가운데 아래 점 기준 (x = 중심, y = 발 끝) */
+.person--male   { transform: translate(660px, 938px) translate(-50%, -100%); }
+.person--female { transform: translate(1237px, 934px) translate(-50%, -100%); }
+.person--male .person__shape   { }
+
+[data-stage="5"] .person { opacity: 1; }
+[data-stage="5"] .person--male   { width: 118px; height: 341px; transform: translate(703px, 938px) translate(-50%, -100%); }
+[data-stage="5"] .person--female { width: 114px; height: 332px; transform: translate(1236px, 934px) translate(-50%, -100%); }
+
+[data-stage="6"] .person { opacity: 1; }
+[data-stage="6"] .person--male   { width: 122px; height: 349px; transform: translate(703px, 757px) translate(-50%, -100%); }
+[data-stage="6"] .person--female { width: 118px; height: 340px; transform: translate(1237px, 756px) translate(-50%, -100%); }
+
+[data-stage="7"] .person, [data-stage="8"] .person { opacity: 1; }
+[data-stage="7"] .person--male,   [data-stage="8"] .person--male   { width: 86px; height: 249px; transform: translate(603px, 604px) translate(-50%, -100%); }
+[data-stage="7"] .person--female, [data-stage="8"] .person--female { width: 85px; height: 244px; transform: translate(1317px, 604px) translate(-50%, -100%); }
+
+/* 2-4 : 실루엣이 버튼으로 변함 (선택된 쪽만 검정) */
+[data-stage="9"] .person, [data-stage="10"] .person, [data-stage="11"] .person, [data-stage="12"] .person { opacity: 1; }
+[data-stage="9"] .person--male,   [data-stage="10"] .person--male,   [data-stage="11"] .person--male,   [data-stage="12"] .person--male   { width: 74px; height: 202px; transform: translate(862px, 435px) translate(-50%, -100%); }
+[data-stage="9"] .person--female, [data-stage="10"] .person--female, [data-stage="11"] .person--female, [data-stage="12"] .person--female { width: 70px; height: 199px; transform: translate(1060px, 435px) translate(-50%, -100%); }
+[data-stage="9"] .person, [data-stage="10"] .person { pointer-events: auto; cursor: pointer; }
+[data-stage="11"] .person, [data-stage="12"] .person { filter: blur(12px); }
+[data-chart="male"]   .person--female .person__shape { background-image: var(--shape-off); }
+[data-chart="female"] .person--male   .person__shape { background-image: var(--shape-off); }
+/* 선택되지 않은 쪽은 조금 작아짐 */
+[data-stage="9"][data-chart="male"]   .person--female .person__shape,
+[data-stage="9"][data-chart="female"] .person--male   .person__shape,
+[data-stage="10"][data-chart="male"]   .person--female .person__shape,
+[data-stage="10"][data-chart="female"] .person--male   .person__shape { scale: .85; }
+.person:focus-visible { outline: 2px dashed #000; outline-offset: 6px; }
+
+/* 이 단계에서는 흑백 실루엣을 그대로 (2-3 이전) */
+[data-stage="5"] .person__shape, [data-stage="6"] .person__shape,
+[data-stage="7"] .person__shape, [data-stage="8"] .person__shape { background-image: var(--shape) !important; }
+
+.person-value {
+  position: absolute; top: 0;
+  width: 160px; margin-left: -80px;
+  text-align: center;
+  font: 700 22px/1 var(--font-body);
+  opacity: 0;
+  transition: opacity .5s ease .3s, transform .8s cubic-bezier(.3,.7,.2,1);
+}
+.person-value--male   { left: 702px; }
+.person-value--female { left: 1237px; }
+[data-stage="5"] .person-value, [data-stage="6"] .person-value { opacity: 1; }
+[data-stage="5"] .person-value { transform: translateY(973px); }
+[data-stage="6"] .person-value { transform: translateY(793px); }
+
+/* ---- 끼니별 막대그래프 ---- */
+.meal-chart {
+  position: absolute; inset: 0;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .5s ease;
+}
+[data-stage="7"] .meal-chart, [data-stage="8"] .meal-chart { opacity: 1; }
+.meal-chart__base {
+  position: absolute; left: 410px; top: 859px;
+  width: 1103px; height: 0;
+  border-top: 1px dashed #D6CFC8;
+}
+.meal-bar {
+  position: absolute;
+  width: 52px;
+  bottom: calc(1080px - 859px);
+  height: 0;
+  border-radius: 5px 5px 0 0;
+  transition: height 1.1s cubic-bezier(.2,.8,.25,1) var(--bd, 0s);
+}
+.meal-bar--male   { background: #A4CCFF; }
+.meal-bar--female { background: var(--chart-red); }
+[data-stage="7"] .meal-bar, [data-stage="8"] .meal-bar { height: var(--h); }
+.meal-bar__name, .meal-bar__pct {
+  position: absolute; width: 90px; margin-left: -19px;
+  text-align: center;
+}
+.meal-bar__name { top: 872px; font: 400 19px/22px var(--font-title); }
+.meal-bar__pct  { top: 906px; font: 400 19px/22px var(--font-body); }
+
+/* ---- 별 모양 말풍선 ---- */
+.burst {
+  position: absolute;
+  opacity: 0;
+  transform: scale(.6) rotate(-6deg);
+  transform-origin: center;
+  transition: opacity .35s ease, transform .6s cubic-bezier(.2,1.3,.4,1);
+  z-index: 7;
+  pointer-events: none;
+}
+.burst--left  { left: 355px; top: 292px; width: 730px; height: 546px; }
+.burst--right { left: 798px; top: 399px; width: 756px; height: 555px; transition-delay: .35s; }
+.burst--age   { left: 1112px; top: 232px; width: 599px; height: 443px; }
+[data-stage="8"] .burst--left, [data-stage="8"] .burst--right,
+[data-stage="10"] .burst--age { opacity: 1; transform: none; }
+
+/* ---- 연령별 꺾은선 그래프 ---- */
+.line-chart-card {
+  position: absolute;
+  left: 445px; top: 447px;
+  width: 1030px; height: 545px;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 22px;
+  z-index: 4;
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity .6s ease, transform .8s cubic-bezier(.2,.8,.3,1), filter .6s;
+  pointer-events: none;
+}
+.line-chart { position: absolute; left: -10px; top: -10px; overflow: visible; }
+[data-stage="9"] .line-chart-card, [data-stage="10"] .line-chart-card, [data-stage="11"] .line-chart-card, [data-stage="12"] .line-chart-card { opacity: 1; transform: none; }
+[data-stage="11"] .line-chart-card, [data-stage="12"] .line-chart-card { filter: blur(14px); }
+
+.lc-grid { stroke: #D2CDC8; stroke-width: 1; stroke-dasharray: 4 4; }
+.lc-axis-label { font: 400 14px var(--font-body); fill: #000; text-anchor: middle; }
+.lc-cat-label  { font: 400 16px var(--font-body); fill: #000; text-anchor: middle; }
+.lc-legend     { font: 400 12px var(--font-body); fill: #000; }
+.lc-line { fill: none; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.lc-line--red    { stroke: var(--graph-red); }
+.lc-line--purple { stroke: var(--graph-purple); }
+.lc-dot { stroke: #000; stroke-width: 2; }
+.lc-dot--red    { fill: var(--graph-red); }
+.lc-dot--purple { fill: var(--graph-purple); }
+.lc-value { font: 400 16px var(--font-body); text-anchor: middle; }
+.lc-value--red    { fill: var(--graph-red); }
+.lc-value--purple { fill: var(--graph-purple); }
+
+/* 선이 왼쪽에서 오른쪽으로 그려지는 효과 */
+.lc-line { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); }
+.lc-dot, .lc-value { opacity: 0; }
+.lc-set.is-drawing .lc-line { animation: lc-draw 1.5s cubic-bezier(.45,.1,.3,1) forwards; }
+.lc-set.is-drawing .lc-dot, .lc-set.is-drawing .lc-value { animation: lc-pop .4s ease forwards; animation-delay: var(--pd); }
+@keyframes lc-draw { to { stroke-dashoffset: 0; } }
+@keyframes lc-pop  { from { opacity: 0; } to { opacity: 1; } }
+.lc-set { display: none; }
+[data-chart="male"]   .lc-set--male   { display: inline; }
+[data-chart="female"] .lc-set--female { display: inline; }
+
+/* ---- 2-5 : 블러 위에 뜨는 문구 ---- */
+.blur-text {
+  position: absolute;
+  left: 0; top: 540px; width: 1920px;
+  transform: translateY(-50%);
+  text-align: center;
+  font: 400 30px/46px var(--font-title);
+  letter-spacing: -.5px;
+  z-index: 8;
+  opacity: 0;
+  transition: opacity .6s ease;
+  pointer-events: none;
+}
+[data-stage="11"] .blur-text--1 { opacity: 1; }
+[data-stage="12"] .blur-text--2 { opacity: 1; }
+
+/* 2-5-2 : 아래쪽 안내 (그라데이션은 다른 개체들 뒤) */
+.scroll-hint--scene2 { opacity: 0; pointer-events: none; transition: opacity .5s; z-index: 9; }
+.scene2 .sticky-frame::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 18%;
+  background: linear-gradient(to bottom, rgba(254,227,198,0), var(--bg-s1));
+  opacity: 0; transition: opacity .5s; pointer-events: none; z-index: 1;
+}
+[data-stage="12"].sticky-frame::after, [data-stage="12"] .scroll-hint--scene2 { opacity: 1; pointer-events: auto; }
+
+
+/* =========================================================
+   04. 씬 3  나의 필요 단백질량
+   ========================================================= */
+.scene3 { position: relative; height: 100vh; overflow: hidden; background: var(--bg-main); }
+.scene3 .stage { z-index: 1; }
+.scene3::after {                      /* 결과가 나오면 아래쪽이 다음 씬 쪽으로 물듦 (배경 위, 다른 개체들 뒤) */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 18%;
+  background: linear-gradient(to bottom, rgba(254,227,198,0), var(--bg-s1));
+  opacity: 0; transition: opacity .6s; pointer-events: none; z-index: 0;
+}
+.scene3.is-done::after { opacity: 1; }
+
+.calc-card {
+  position: absolute;
+  left: 437px; width: 1044px;
+  border: 2px solid #000;
+  border-radius: 18px;
+  text-align: center;
+}
+.calc-card--gender { top: 85px;  height: 169px; background: var(--box-blue); }
+.calc-card--age    { top: 271px; height: 169px; background: var(--box-orange); }
+.calc-card--weight { top: 457px; height: 167px; background: var(--box-red); z-index: 3; }
+.calc-card--result { top: 640px; height: 354px; background: var(--box-pink); }
+
+.calc-card__title { margin-top: 34px; font: 400 21px/32px var(--font-title); }
+.calc-card__options { margin-top: 24px; display: flex; justify-content: center; gap: 16px; }
+
+.pill {
+  height: 46px; padding: 0 22px; min-width: 80px;
+  border: 2px solid #000;
+  border-radius: 23px;
+  background: #fff;
+  font: 400 15px/42px var(--font-title);
+  transition: background-color .25s;
+}
+.pill.is-selected { background: var(--chart-red); }
+
+/* 체중 선택 */
+.weight-field {
+  margin-top: 24px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.weight-select { position: relative; }
+.weight-select__button {
+  width: 66px; height: 46px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px 0 14px;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 4px;
+  font: 400 20px/1 var(--font-body);
+}
+.weight-select__arrow {
+  width: 7px; height: 7px;
+  border-right: 2px solid #000; border-bottom: 2px solid #000;
+  transform: translateY(-2px) rotate(45deg);
+}
+.weight-select__list {
+  overscroll-behavior: contain;
+  position: absolute; left: 0; top: 52px;
+  width: 66px; max-height: 120px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.12);
+  display: none;
+  z-index: 10;
+}
+.weight-select.is-open .weight-select__list { display: block; }
+.weight-select__list li {
+  height: 36px; line-height: 36px;
+  text-align: center;
+  font: 400 18px/36px var(--font-body);
+  cursor: pointer;
+}
+.weight-select__list li:hover, .weight-select__list li.is-selected { background: #F2F2F2; }
+.weight-field__unit { font: 400 28px/1 var(--font-title); }
+
+/* 결과 */
+.calc-result {
+  position: absolute; left: 0; right: 0; top: 50%;
+  transform: translateY(-50%);
+  font: 400 28px/42px var(--font-title);
+  letter-spacing: -.4px;
+  transition: opacity .5s ease;
+}
+.calc-result--answer { opacity: 0; font-size: 26px; }
+.calc-result__goal { color: var(--goal-red); font-style: normal; }
+.calc-card--result.is-done .calc-result--ask { opacity: 0; }
+.calc-card--result.is-done .calc-result--answer { opacity: 1; }
+/* 값이 다시 계산될 때 : 빠르게 흐려졌다가 새 값과 함께 다시 등장 */
+.calc-card--result.is-recalc .calc-result--answer { opacity: 0; transition: opacity .16s ease; }
+
+.scroll-hint--scene3 { opacity: 0; pointer-events: none; transition: opacity .5s ease .2s; }
+.scene3.is-done .scroll-hint--scene3 { opacity: 1; pointer-events: auto; }
+
+
+/* =========================================================
+   05. 씬 4  냉장고 (드래그 앤 드롭)
+   ========================================================= */
+.scene4 { position: relative; height: 100vh; overflow: hidden; background: var(--bg-main); }
+
+.fridge-tag {
+  position: absolute; left: 310px; top: 55px;
+  width: 188px; height: 36px;
+  background: var(--box-pink);
+  border-radius: 8px 8px 0 0;
+  font: 400 19px/36px var(--font-title);
+  text-align: center;
+}
+.fridge { position: absolute; left: 280px; top: 91px; width: 1148px; height: 710px; }
+
+.fridge-labels span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font: 400 15px/1 var(--font-title);
+  white-space: nowrap;
+}
+.fridge-items { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.fridge-items .food { pointer-events: auto; }
+
+.food {
+  position: absolute;
+  left: 0; top: 0;
+  cursor: grab;
+  touch-action: none;
+  transition: transform .35s cubic-bezier(.3,.8,.3,1);
+}
+.food img { width: 100%; height: 100%; pointer-events: none; }
+.food:hover { filter: drop-shadow(0 3px 4px rgba(0,0,0,.18)); }
+.food.is-dragging { transition: none; cursor: grabbing; z-index: 50; filter: drop-shadow(0 8px 10px rgba(0,0,0,.22)); }
+.food.is-on-plate { z-index: 4; }
+
+/* 우측 : 음식 정보 칸 */
+.info-shelf { position: absolute; left: 1476px; top: 92px; width: 164px; height: 525px; z-index: 2; }
+.info-shelf__bg { width: 164px; height: 525px; }
+.info-slot {
+  position: absolute; left: 0; width: 164px;
+  text-align: center;
+  animation: slot-in .45s cubic-bezier(.2,.9,.3,1.1);
+}
+.info-slot img { position: absolute; left: 50%; transform: translateX(-50%); }
+/* '오늘의 목표 단백질 섭취량' 과 같은 글꼴·크기 */
+.info-slot__name { position: absolute; left: 0; right: 0; font: 400 17px/26px var(--font-title); white-space: nowrap; letter-spacing: -.6px; }
+.info-slot__gram { position: absolute; left: 0; right: 0; font: 400 17px/26px var(--font-title); }
+@keyframes slot-in { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+
+/* 오늘의 목표 */
+.goal-box {
+  position: absolute; left: 1475px; top: 646px;
+  width: 166px; height: 161px;
+  background: var(--box-red);
+  border: 2px solid #000;
+  border-radius: 20px;
+  text-align: center;
+  z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;   /* 상하좌우 정중앙 */
+}
+.goal-box__label { margin-top: 0; font: 400 17px/26px var(--font-title); }
+.goal-box__value { margin-top: 6px; font: 400 26px/30px var(--font-title); color: var(--goal-red); }
+.help-btn { position: absolute; right: 14px; top: 12px; width: 20px; height: 20px; z-index: 3; }
+.help-btn img { width: 20px; height: 20px; }
+.help-bubble {
+  position: absolute; left: 1501px; top: 462px;
+  width: 228px; height: 200px;
+  z-index: 6;
+  opacity: 0;
+  transform: translateY(10px) scale(.92);
+  transform-origin: 50% 100%;
+  transition: opacity .25s ease, transform .3s cubic-bezier(.2,.9,.3,1.2);
+  pointer-events: none;
+}
+.help-bubble.is-open { opacity: 1; transform: none; }
+
+/* 식사 마치기 */
+.finish-btn {
+  position: absolute; left: 1475px; top: 835px;
+  width: 166px; height: 98px;
+  background: var(--box-pink);
+  border: 2px solid #000;
+  border-radius: 20px;
+  font: 400 19px/1 var(--font-title);
+  transition: opacity .3s;
+}
+.finish-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* 접시 */
+.meal-plate { position: absolute; top: 832px; width: 341px; height: 122px; }
+.meal-plate img { width: 341px; height: 122px; }
+.meal-plate span {
+  position: absolute; left: 0; right: 0; top: 136px;
+  text-align: center;
+  font: 400 19px/1 var(--font-title);
+}
+.meal-plate[data-plate="0"] { left: 310px; }
+.meal-plate[data-plate="1"] { left: 684px; }
+.meal-plate[data-plate="2"] { left: 1058px; }
+.plate-items { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.plate-items .food { pointer-events: auto; }
+
+
+/* =========================================================
+   06. 씬 5  평가 팝업
+   ========================================================= */
+.result-overlay {
+  position: fixed; inset: 0;
+  z-index: 100;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: rgba(255, 248, 240, .35);
+  -webkit-backdrop-filter: blur(16px);
+          backdrop-filter: blur(16px);
+  transition: opacity .5s ease, visibility 0s linear .9s;
+}
+.result-overlay.is-open { visibility: visible; opacity: 1; pointer-events: auto; transition: opacity .5s ease, visibility 0s; }
+
+/* 팝업 : 디자인(874 x 806) 크기 = 971 x 896 의 0.9배 */
+.result-popup {
+  position: absolute;
+  left: 523px; top: 88px;
+  width: 971px; height: 896px;
+  border: 2px solid #000;
+  border-radius: 30px;
+  text-align: center;
+  transform-origin: 0 0;
+  transform: translateY(1150px) scale(.9);          /* 아래에서 위로 올라옴 */
+  transition: transform .85s cubic-bezier(.2,.85,.25,1);
+}
+.result-overlay.is-open .result-popup { transform: scale(.9); transition-delay: .1s; }
+.result-popup[data-level="1"] { background: var(--box-red); }
+.result-popup[data-level="2"] { background: var(--box-pink); }
+.result-popup[data-level="3"] { background: var(--box-orange); }
+.result-popup[data-level="4"] { background: var(--box-blue); }
+
+.screw {
+  position: absolute; width: 36px; height: 36px;
+  border: 2px solid #000; border-radius: 50%;
+  background: #DDDDDD;
+}
+.screw--tl { left: 16px;  top: 19px; }
+.screw--tr { right: 18px; top: 19px; }
+.screw--bl { left: 16px;  bottom: 19px; }
+.screw--br { right: 18px; bottom: 19px; }
+
+/* 제목 + 따옴표 */
+.result-popup__head {
+  position: absolute; left: 50%; top: 78px;
+  transform: translateX(-50%);
+  width: max-content; max-width: 800px;
+}
+.result-popup__title {
+  font: 400 47px/60px var(--font-title);
+  white-space: pre-line;
+  text-align: center;
+}
+.quote {
+  position: absolute; width: 27px; height: 18px;
+  background: linear-gradient(115deg, transparent 0 12%, #000 12% 46%, transparent 46% 54%, #000 54% 88%, transparent 88%);
+}
+.quote--open  { left: -53px; top: 12px; }
+.quote--close { right: -56px; bottom: 46px; transform: scaleX(-1); }
+
+.result-popup__illust { position: absolute; }
+.result-popup__score { position: absolute; left: 0; right: 0; top: 615px; font: 400 40px/48px var(--font-title); }
+.result-popup__desc  { position: absolute; left: 0; right: 0; top: 665px; font: 400 22px/32px var(--font-title); }
+.result-popup__desc b { color: var(--goal-red); font-weight: 400; }
+
+/* 게이지 : 0 ~ 최대값, 지도 모양 핀이 섭취량 위치를 표시 */
+.gauge { position: absolute; left: 167px; top: 705px; width: 636px; height: 125px; }
+.gauge__bar { position: absolute; left: 0; top: 42px; width: 100%; height: 53px; display: flex; border: 2px solid #000; box-sizing: border-box; }
+.gauge__zone { display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; font: 400 21px/1 var(--font-title); }
+.gauge__zone--bad { background: var(--chart-red); }
+.gauge__zone--low { background: var(--chart-yellow); }
+.gauge__zone--ok  { background: var(--chart-green); }
+.gauge__pin { position: absolute; top: 4px; width: 29px; height: 38px; margin-left: -14.5px; transition: left 1s cubic-bezier(.3,.8,.3,1) .9s; }
+.gauge__min, .gauge__max { position: absolute; top: 106px; font: 400 15px/1 var(--font-body); }
+.gauge__min { left: 0; }
+.gauge__max { right: 0; }
+
+/* 팝업 옆(아래) 버튼 : 팝업이 올라온 뒤에 나타남 */
+.result-actions {
+  position: absolute; left: 0; top: 916px;
+  width: 1920px; height: 72px;
+  pointer-events: none;
+}
+.result-btn {
+  position: absolute; top: 0;
+  width: 178px; height: 72px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 24px;
+  font: 400 25px/1 var(--font-title);
+  white-space: nowrap;
+  opacity: 0;
+  translate: 0 22px;
+  transition: opacity .45s ease, translate .55s cubic-bezier(.2,.9,.3,1.1);
+}
+#retryBtn   { left: 761px; }
+#restartBtn { left: 991px; transition-delay: .12s; }
+.result-btn img { width: 24px; height: 23px; }
+.result-overlay.is-open .result-btn { opacity: 1; translate: 0 0; pointer-events: auto; transition-delay: 1.15s; }
+.result-overlay.is-open #restartBtn { transition-delay: 1.3s; }
